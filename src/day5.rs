@@ -15,7 +15,7 @@ fn day5_part1(program: &[i64]) -> Result<i64, Box<dyn std::error::Error>> {
     for output in outputs.iter() {
         println!("output: {}", output);
     }
-    Ok(outputs[outputs.len()-1])
+    Ok(outputs[outputs.len() - 1])
 }
 
 #[aoc(day5, part2)]
@@ -25,7 +25,7 @@ fn day5_part2(program: &[i64]) -> Result<i64, Box<dyn std::error::Error>> {
     for output in outputs.iter() {
         println!("output: {}", output);
     }
-    Ok(outputs[outputs.len()-1])
+    Ok(outputs[outputs.len() - 1])
 }
 
 #[cfg(test)]
@@ -49,12 +49,12 @@ mod tests {
 
     #[test]
     fn test_example_1() {
-        check(vec![1002,4,3,4,33], vec![1002,4,3,4,99]);
+        check(vec![1002, 4, 3, 4, 33], vec![1002, 4, 3, 4, 99]);
     }
 
     #[test]
     fn test_example_2() {
-        check(vec![1101,100,-1,4,0], vec![1101,100,-1,4,99])
+        check(vec![1101, 100, -1, 4, 0], vec![1101, 100, -1, 4, 99])
     }
 
     fn check_equal(is_8: Vec<i64>) {
@@ -75,25 +75,31 @@ mod tests {
 
     #[test]
     fn test_equal() {
-        check_equal(vec![3,9,8,9,10,9,4,9,99,-1,8]);
-        check_equal(vec![3,3,1108,-1,8,3,4,3,99]);
+        check_equal(vec![3, 9, 8, 9, 10, 9, 4, 9, 99, -1, 8]);
+        check_equal(vec![3, 3, 1108, -1, 8, 3, 4, 3, 99]);
     }
 
     #[test]
     fn test_less_than() {
-        check_less_than(vec![3,9,7,9,10,9,4,9,99,-1,8]);
-        check_less_than(vec![3,3,1107,-1,8,3,4,3,99]);
+        check_less_than(vec![3, 9, 7, 9, 10, 9, 4, 9, 99, -1, 8]);
+        check_less_than(vec![3, 3, 1107, -1, 8, 3, 4, 3, 99]);
     }
 
     #[test]
     fn test_jumps() {
-        check_jumps(vec![3,12,6,12,15,1,13,14,13,4,13,99,-1,0,1,9]);
-        check_jumps(vec![3,3,1105,-1,9,1101,0,0,12,4,12,99,1]);
+        check_jumps(vec![
+            3, 12, 6, 12, 15, 1, 13, 14, 13, 4, 13, 99, -1, 0, 1, 9,
+        ]);
+        check_jumps(vec![3, 3, 1105, -1, 9, 1101, 0, 0, 12, 4, 12, 99, 1]);
     }
 
     #[test]
     fn test_big_program() {
-        let big_program = vec![3,21,1008,21,8,20,1005,20,22,107,8,21,20,1006,20,31,1106,0,36,98,0,0,1002,21,125,20,4,20,1105,1,46,104,999,1105,1,46,1101,1000,1,20,4,20,1105,1,46,98,99];
+        let big_program = vec![
+            3, 21, 1008, 21, 8, 20, 1005, 20, 22, 107, 8, 21, 20, 1006, 20, 31, 1106, 0, 36, 98, 0,
+            0, 1002, 21, 125, 20, 4, 20, 1105, 1, 46, 104, 999, 1105, 1, 46, 1101, 1000, 1, 20, 4,
+            20, 1105, 1, 46, 98, 99,
+        ];
 
         // The above example program uses an input instruction to ask
         // for a single number. The program will then output 999 if

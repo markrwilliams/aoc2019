@@ -1,8 +1,8 @@
-use std::error;
-use std::result;
-use std::fmt;
 use std::convert::TryFrom;
+use std::error;
+use std::fmt;
 use std::iter;
+use std::result;
 use std::slice;
 
 pub type Result = std::result::Result<Vec<i64>, IntcodeError>;
@@ -14,7 +14,7 @@ pub enum IntcodeError {
     InvalidParameterType(usize, i64, &'static str),
     UnknownParameterType(usize, i64),
     NegativePosition(usize, i64, i64),
-    MissingInput(usize)
+    MissingInput(usize),
 }
 
 impl fmt::Display for IntcodeError {
@@ -24,8 +24,16 @@ impl fmt::Display for IntcodeError {
             UnknownError => write!(f, "unknown error"),
             UnknownOpcode(pc, o) => write!(f, "pc: {}, unknown opcode {}", pc, o),
             UnknownParameterType(pc, t) => write!(f, "pc: {}, unknown parameter type {}", pc, t),
-            InvalidParameterType(pc, t, operation) => write!(f, "pc: {}, invalid parameter type {} for operation {}", pc, t, operation),
-            NegativePosition(pc, opcode, position) => write!(f, "pc: {}, opcode {} has negative position parameter {}", pc, opcode, position),
+            InvalidParameterType(pc, t, operation) => write!(
+                f,
+                "pc: {}, invalid parameter type {} for operation {}",
+                pc, t, operation
+            ),
+            NegativePosition(pc, opcode, position) => write!(
+                f,
+                "pc: {}, opcode {} has negative position parameter {}",
+                pc, opcode, position
+            ),
             MissingInput(pc) => write!(f, "pc: {}, input instruction but no input", pc),
         }
     }
@@ -67,12 +75,8 @@ impl<'a> Instruction<'a> {
 
     fn intcode_index(&self, i: i64) -> result::Result<usize, IntcodeError> {
         match usize::try_from(i) {
-            Err(_) => Err(IntcodeError::NegativePosition(
-                self.pc,
-                self.opcode(),
-                i,
-            )),
-            Ok(v) => Ok(v)
+            Err(_) => Err(IntcodeError::NegativePosition(self.pc, self.opcode(), i)),
+            Ok(v) => Ok(v),
         }
     }
 
@@ -83,12 +87,10 @@ impl<'a> Instruction<'a> {
             0 => {
                 let idx = self.intcode_index(self.program[self.parameter_index(n)])?;
                 Ok(self.program[idx])
-            },
-            // immediate
-            1 => {
-                Ok(self.program[self.parameter_index(n)])
             }
-            _ => Err(IntcodeError::UnknownParameterType(self.pc, parameter_type))
+            // immediate
+            1 => Ok(self.program[self.parameter_index(n)]),
+            _ => Err(IntcodeError::UnknownParameterType(self.pc, parameter_type)),
         }
     }
 
@@ -99,10 +101,14 @@ impl<'a> Instruction<'a> {
             0 => {
                 let idx = self.intcode_index(self.program[self.parameter_index(n)])?;
                 Ok(&mut self.program[idx])
-            },
+            }
             // immediate not supported!
-            1 => Err(IntcodeError::InvalidParameterType(self.pc, parameter_type, "assign")),
-            _ => Err(IntcodeError::UnknownParameterType(self.pc, parameter_type))
+            1 => Err(IntcodeError::InvalidParameterType(
+                self.pc,
+                parameter_type,
+                "assign",
+            )),
+            _ => Err(IntcodeError::UnknownParameterType(self.pc, parameter_type)),
         }
     }
 }
@@ -175,20 +181,22 @@ impl<'a> Machine<'a, slice::Iter<'a, i64>> {
                 }
                 // less than
                 7 => {
-                    *instruction.assign(2)? = if instruction.parameter(0)? < instruction.parameter(1)? {
-                        1
-                    } else {
-                        0
-                    };
+                    *instruction.assign(2)? =
+                        if instruction.parameter(0)? < instruction.parameter(1)? {
+                            1
+                        } else {
+                            0
+                        };
                     self.consume_parameters(3);
                 }
                 // equals
                 8 => {
-                    *instruction.assign(2)? = if instruction.parameter(0)? == instruction.parameter(1)? {
-                        1
-                    } else {
-                        0
-                    };
+                    *instruction.assign(2)? =
+                        if instruction.parameter(0)? == instruction.parameter(1)? {
+                            1
+                        } else {
+                            0
+                        };
                     self.consume_parameters(3);
                 }
                 99 => return Ok(output),
