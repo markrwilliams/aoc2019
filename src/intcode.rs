@@ -48,14 +48,16 @@ impl error::Error for IntcodeError {
 struct Instruction<'a> {
     instruction: i64,
     pc: usize,
+    relative_base: usize,
     program: &'a mut [i64],
 }
 
 impl<'a> Instruction<'a> {
-    fn new(instruction: i64, pc: usize, program: &'a mut [i64]) -> Instruction {
+    fn new(instruction: i64, pc: usize, relative_base: usize, program: &'a mut [i64]) -> Instruction {
         return Instruction {
             instruction: instruction,
             pc: pc,
+            relative_base: relative_base,
             program: program,
         };
     }
@@ -90,6 +92,13 @@ impl<'a> Instruction<'a> {
             }
             // immediate
             1 => Ok(self.program[self.parameter_index(n)]),
+            // relative
+            2 => {
+                let ridx = self.intcode_index(
+                    self.relative_base as i64 + self.program[self.parameter_index(n)]
+                )?;
+                Ok(self.program[ridx])
+            }
             _ => Err(IntcodeError::UnknownParameterType(self.pc, parameter_type)),
         }
     }
@@ -108,6 +117,12 @@ impl<'a> Instruction<'a> {
                 parameter_type,
                 "assign",
             )),
+            2 => {
+                let ridx = self.intcode_index(
+                    self.relative_base as i64 + self.program[self.parameter_index(n)]
+                )?;
+                Ok(&mut self.program[ridx])
+            }
             _ => Err(IntcodeError::UnknownParameterType(self.pc, parameter_type)),
         }
     }
@@ -115,6 +130,7 @@ impl<'a> Instruction<'a> {
 
 pub struct Machine {
     pc: usize,
+    relative_base: usize,
     // a machine should own its program, so that it can be re-executed
     // with different inputs without lifetime management.
     program: Vec<i64>,
@@ -122,9 +138,13 @@ pub struct Machine {
 
 impl Machine {
     pub fn new(program: &[i64]) -> Self {
+        let mut program = program.to_vec();
+        // additional memory
+        program.extend(vec![0; program.len() * 100]);
         Machine {
             pc: 0,
-            program: program.to_vec(),
+            relative_base: 0,
+            program: program,
         }
     }
 
@@ -135,7 +155,12 @@ impl Machine {
     pub fn execute<'a, I>(&mut self, mut input: I) -> result::Result<Option<i64>, IntcodeError>
     where I: iter::Iterator<Item = &'a i64> {
         loop {
-            let mut instruction = Instruction::new(self.program[self.pc], self.pc, &mut self.program);
+            let mut instruction = Instruction::new(
+                self.program[self.pc],
+                self.pc,
+                self.relative_base,
+                &mut self.program,
+            );
             match instruction.opcode() {
                 // add
                 1 => {
@@ -190,6 +215,12 @@ impl Machine {
                         };
                     self.consume_parameters(3);
                 }
+                // change the relative base
+                9 => {
+                    let offset = instruction.parameter(0)?;
+                    self.relative_base = (self.relative_base as i64 + offset) as usize;
+                    self.consume_parameters(1);
+                }
                 // equals
                 8 => {
                     *instruction.assign(2)? =
@@ -228,7 +259,7 @@ pub fn execute_with_input<'a>(program: &'a mut [i64], input: &'a [i64]) -> AllOu
             None => {
                 // copy the program back into the slice so tests can
                 // inspect it.
-                program.copy_from_slice(&machine.program);
+                program.copy_from_slice(&machine.program[..program.len()]);
                 return Ok(output)
             },
         }

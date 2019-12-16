@@ -30,11 +30,11 @@ fn day2_part2(program: &[i64]) -> Result<i64, Box<dyn std::error::Error>> {
     Err(Box::new(intcode::IntcodeError::UnknownError))
 }
 
-type TestResult = Result<(), intcode::IntcodeError>;
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    type TestResult = Result<(), intcode::IntcodeError>;
 
     fn execute(program: Vec<i64>) -> Result<Vec<i64>, intcode::IntcodeError> {
         let mut executed = program.clone();
