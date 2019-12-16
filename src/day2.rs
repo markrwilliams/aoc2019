@@ -2,10 +2,7 @@ use crate::intcode;
 
 #[aoc_generator(day2)]
 fn parse_program(input: &str) -> Vec<i64> {
-    input
-        .split(",")
-        .map(|i| i.parse::<i64>().unwrap())
-        .collect()
+    intcode::parse_program(input)
 }
 
 #[aoc(day2, part1)]
@@ -43,11 +40,6 @@ mod tests {
         let mut executed = program.clone();
         intcode::execute(&mut executed)?;
         Ok(executed)
-    }
-
-    #[test]
-    fn test_parse_program() {
-        assert_eq!(parse_program("1,0,0,0,99"), vec![1, 0, 0, 0, 99])
     }
 
     #[test]

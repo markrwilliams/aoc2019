@@ -1,11 +1,11 @@
 use std::convert::TryFrom;
 use std::error;
 use std::fmt;
-use std::iter;
 use std::result;
-use std::slice;
+use std::iter;
 
-pub type Result = std::result::Result<Vec<i64>, IntcodeError>;
+pub type AllOutputResult = std::result::Result<Vec<i64>, IntcodeError>;
+pub type OutputResult = std::result::Result<Option<i64>, IntcodeError>;
 
 #[derive(Debug)]
 pub enum IntcodeError {
@@ -113,18 +113,18 @@ impl<'a> Instruction<'a> {
     }
 }
 
-struct Machine<'a, I: iter::Iterator<Item = &'a i64>> {
+pub struct Machine {
     pc: usize,
-    program: &'a mut [i64],
-    input: I,
+    // a machine should own its program, so that it can be re-executed
+    // with different inputs without lifetime management.
+    program: Vec<i64>,
 }
 
-impl<'a> Machine<'a, slice::Iter<'a, i64>> {
-    fn new(program: &'a mut [i64], input: &'a [i64]) -> Self {
+impl Machine {
+    pub fn new(program: &[i64]) -> Self {
         Machine {
             pc: 0,
-            program: program,
-            input: input.iter(),
+            program: program.to_vec(),
         }
     }
 
@@ -132,15 +132,15 @@ impl<'a> Machine<'a, slice::Iter<'a, i64>> {
         self.pc += 1 + parameters;
     }
 
-    fn execute(&'a mut self) -> Result {
-        let mut output: Vec<i64> = vec![];
+    pub fn execute<'a, I>(&mut self, mut input: I) -> result::Result<Option<i64>, IntcodeError>
+    where I: iter::Iterator<Item = &'a i64> {
         loop {
-            let mut instruction = Instruction::new(self.program[self.pc], self.pc, self.program);
+            let mut instruction = Instruction::new(self.program[self.pc], self.pc, &mut self.program);
             match instruction.opcode() {
                 // add
                 1 => {
-                    *instruction.assign(2)? =
-                        instruction.parameter(0)? + instruction.parameter(1)?;
+                    let res = instruction.parameter(0)? + instruction.parameter(1)?;
+                    *instruction.assign(2)? = res;
                     self.consume_parameters(3);
                 }
                 // multiply
@@ -151,7 +151,7 @@ impl<'a> Machine<'a, slice::Iter<'a, i64>> {
                 }
                 // input
                 3 => {
-                    let input = match self.input.next() {
+                    let input = match input.next() {
                         Some(input) => *input,
                         None => return Err(IntcodeError::MissingInput(self.pc)),
                     };
@@ -160,8 +160,9 @@ impl<'a> Machine<'a, slice::Iter<'a, i64>> {
                 }
                 // output
                 4 => {
-                    output.push(instruction.parameter(0)?);
+                    let output = instruction.parameter(0)?;
                     self.consume_parameters(1);
+                    return Ok(Some(output));
                 }
                 // jump-if-true
                 5 => {
@@ -199,17 +200,48 @@ impl<'a> Machine<'a, slice::Iter<'a, i64>> {
                         };
                     self.consume_parameters(3);
                 }
-                99 => return Ok(output),
+                99 => return Ok(None),
                 _ => return Err(IntcodeError::UnknownOpcode(self.pc, instruction.opcode())),
             }
         }
     }
 }
 
-pub fn execute<'a>(program: &'a mut [i64]) -> Result {
-    Machine::new(program, &[]).execute()
+pub fn parse_program(input: &str) -> Vec<i64> {
+    input
+        .split(",")
+        .map(|i| i.parse::<i64>().unwrap())
+        .collect()
 }
 
-pub fn execute_with_input<'a>(program: &'a mut [i64], input: &'a [i64]) -> Result {
-    Machine::new(program, input).execute()
+pub fn execute<'a>(program: &'a mut [i64]) -> AllOutputResult {
+    execute_with_input(program, &[])
+}
+
+pub fn execute_with_input<'a>(program: &'a mut [i64], input: &'a [i64]) -> AllOutputResult {
+    let mut input = input.iter();
+    let mut machine = Machine::new(program);
+    let mut output = vec![];
+    loop {
+        match machine.execute(&mut input)? {
+            Some(o) => output.push(o),
+            None => {
+                // copy the program back into the slice so tests can
+                // inspect it.
+                program.copy_from_slice(&machine.program);
+                return Ok(output)
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_program() {
+        assert_eq!(parse_program("1,0,0,0,99"), vec![1, 0, 0, 0, 99])
+    }
+
 }
